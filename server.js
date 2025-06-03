@@ -12,8 +12,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 🪟 Setări pentru Windows
-const YT_DLP = 'bin\\yt-dlp.exe';
-const FFMPEG = 'bin\\ffmpeg.exe';
+const YT_DLP = path.join(__dirname, 'bin', 'yt-dlp');
+const FFMPEG = path.join(__dirname, 'bin', 'ffmpeg');
 
 app.use(cors());
 
