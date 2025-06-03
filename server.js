@@ -50,17 +50,14 @@ app.get('/info', (req, res) => {
   const videoURL = req.query.url;
   if (!videoURL) return res.status(400).send('Missing URL');
 
-  const command = `./bin/yt-dlp ${cookieOption} -F "${videoURL}" --ffmpeg-location ./bin`;
-  console.log('Running info command:', command);
+  const command = `./bin/yt-dlp --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" --sleep-interval 10 --max-sleep-interval 20 --no-check-certificate -F "${videoURL}"`;
+  console.log('Running command:', command);
 
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error('yt-dlp info error:', error.message);
-      return res.status(500).json({
-        error: 'Failed to get video info',
-        message: error.message,
-        stderr,
-      });
+      console.error('stderr:', stderr);
+      return res.status(500).send('Failed to get video info');
     }
 
     const formats = stdout
