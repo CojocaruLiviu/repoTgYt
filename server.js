@@ -8,7 +8,6 @@ import { fileURLToPath } from 'url';
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// __dirname substitute (ES modules)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -19,21 +18,19 @@ app.get('/', (req, res) => {
 });
 
 app.get('/check-ffmpeg', (req, res) => {
-  exec('./bin/ffmpeg -version', (err, stdout, stderr) => {
+  exec('./bin/ffmpeg -version', (err, stdout) => {
     if (err) return res.status(500).send('ffmpeg not found or not executable');
     res.send(`ffmpeg OK:\n${stdout}`);
   });
 });
 
 app.get('/check-ffprobe', (req, res) => {
-  exec('./bin/ffprobe -version', (err, stdout, stderr) => {
+  exec('./bin/ffprobe -version', (err, stdout) => {
     if (err) return res.status(500).send('ffprobe not found or not executable');
     res.send(`ffprobe OK:\n${stdout}`);
   });
 });
 
-
-// /check-tools endpoint
 app.get('/check-tools', (req, res) => {
   exec('./bin/yt-dlp --version', (err, stdout) => {
     if (err) return res.status(500).send('yt-dlp not found');
@@ -41,19 +38,22 @@ app.get('/check-tools', (req, res) => {
   });
 });
 
-// /info endpoint
 app.get('/info', (req, res) => {
   const videoURL = req.query.url;
   if (!videoURL) return res.status(400).send('Missing URL');
 
-  const command = `./bin/yt-dlp -F "${videoURL}"`;
+  const command = `./bin/yt-dlp -F "${videoURL}" --ffmpeg-location ./bin`;
   console.log('Running command:', command);
 
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error('yt-dlp info error:', error.message);
       console.error('stderr:', stderr);
-      return res.status(500).send('Failed to get video info');
+      return res.status(500).json({
+        error: 'Failed to get video info',
+        message: error.message,
+        stderr: stderr
+      });
     }
 
     const formats = stdout
@@ -65,7 +65,6 @@ app.get('/info', (req, res) => {
   });
 });
 
-// /download endpoint
 app.get('/download', (req, res) => {
   const videoURL = req.query.url;
   const format = req.query.format || 'mp4';
@@ -80,7 +79,7 @@ app.get('/download', (req, res) => {
   let command;
 
   if (format === 'mp3') {
-    command = `./bin/yt-dlp -x --audio-format mp3 -o "${outputPath}" "${videoURL}"`;
+    command = `./bin/yt-dlp -x --audio-format mp3 -o "${outputPath}" --ffmpeg-location ./bin "${videoURL}"`;
   } else {
     let formatCode;
     switch (quality) {
@@ -93,10 +92,16 @@ app.get('/download', (req, res) => {
     command = `./bin/yt-dlp -f "${formatCode}" -o "${outputPath}" --ffmpeg-location ./bin "${videoURL}"`;
   }
 
+  console.log('Executing download command:', command);
+
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error('Download error:', stderr);
-      return res.status(500).send('Download failed');
+      return res.status(500).json({
+        error: 'Download failed',
+        message: error.message,
+        stderr: stderr
+      });
     }
 
     res.download(outputPath, (err) => {
@@ -106,7 +111,6 @@ app.get('/download', (req, res) => {
   });
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
