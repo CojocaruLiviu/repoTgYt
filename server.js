@@ -14,6 +14,10 @@ const __dirname = path.dirname(__filename);
 
 app.use(cors());
 
+app.get('/', (req, res) => {
+  res.send('Server is running');
+});
+
 // /check-tools endpoint
 app.get('/check-tools', (req, res) => {
   exec('./bin/yt-dlp --version', (err, stdout) => {
@@ -28,10 +32,12 @@ app.get('/info', (req, res) => {
   if (!videoURL) return res.status(400).send('Missing URL');
 
   const command = `./bin/yt-dlp -F "${videoURL}"`;
+  console.log('Running command:', command);
 
-  exec(command, (error, stdout) => {
+  exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error('yt-dlp info error:', error.message);
+      console.error('stderr:', stderr);
       return res.status(500).send('Failed to get video info');
     }
 
