@@ -13,6 +13,13 @@ const __dirname = path.dirname(__filename);
 
 app.use(cors());
 
+const COOKIE_PATH = path.join(__dirname, 'cookies', 'youtube.com.txt');
+
+// Util: verifică dacă cookie-ul există
+const cookieOption = fs.existsSync(COOKIE_PATH)
+  ? `--cookies "${COOKIE_PATH}"`
+  : '';
+
 app.get('/', (req, res) => {
   res.send('Server is running');
 });
@@ -38,21 +45,21 @@ app.get('/check-tools', (req, res) => {
   });
 });
 
+// 📄 INFO - Formate video disponibile
 app.get('/info', (req, res) => {
   const videoURL = req.query.url;
   if (!videoURL) return res.status(400).send('Missing URL');
 
-  const command = `./bin/yt-dlp -F "${videoURL}" --ffmpeg-location ./bin`;
-  console.log('Running command:', command);
+  const command = `./bin/yt-dlp ${cookieOption} -F "${videoURL}" --ffmpeg-location ./bin`;
+  console.log('Running info command:', command);
 
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error('yt-dlp info error:', error.message);
-      console.error('stderr:', stderr);
       return res.status(500).json({
         error: 'Failed to get video info',
         message: error.message,
-        stderr: stderr
+        stderr,
       });
     }
 
@@ -65,6 +72,7 @@ app.get('/info', (req, res) => {
   });
 });
 
+// 📥 DOWNLOAD
 app.get('/download', (req, res) => {
   const videoURL = req.query.url;
   const format = req.query.format || 'mp4';
@@ -79,7 +87,7 @@ app.get('/download', (req, res) => {
   let command;
 
   if (format === 'mp3') {
-    command = `./bin/yt-dlp -x --audio-format mp3 -o "${outputPath}" --ffmpeg-location ./bin "${videoURL}"`;
+    command = `./bin/yt-dlp ${cookieOption} -x --audio-format mp3 -o "${outputPath}" "${videoURL}"`;
   } else {
     let formatCode;
     switch (quality) {
@@ -89,28 +97,25 @@ app.get('/download', (req, res) => {
       default: formatCode = 'bestvideo+bestaudio/best';
     }
 
-    command = `./bin/yt-dlp -f "${formatCode}" -o "${outputPath}" --ffmpeg-location ./bin "${videoURL}"`;
+    command = `./bin/yt-dlp ${cookieOption} -f "${formatCode}" -o "${outputPath}" --ffmpeg-location ./bin "${videoURL}"`;
   }
 
-  console.log('Executing download command:', command);
+  console.log('Running download command:', command);
 
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error('Download error:', stderr);
-      return res.status(500).json({
-        error: 'Download failed',
-        message: error.message,
-        stderr: stderr
-      });
+      return res.status(500).json({ error: 'Download failed', stderr });
     }
 
     res.download(outputPath, (err) => {
       if (err) console.error('Send file error:', err);
-      fs.unlinkSync(outputPath);
+      fs.unlinkSync(outputPath); // Șterge fișierul după descărcare
     });
   });
 });
 
+// 🚀 Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
