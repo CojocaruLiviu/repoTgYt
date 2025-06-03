@@ -18,6 +18,21 @@ app.get('/', (req, res) => {
   res.send('Server is running');
 });
 
+app.get('/check-ffmpeg', (req, res) => {
+  exec('./bin/ffmpeg -version', (err, stdout, stderr) => {
+    if (err) return res.status(500).send('ffmpeg not found or not executable');
+    res.send(`ffmpeg OK:\n${stdout}`);
+  });
+});
+
+app.get('/check-ffprobe', (req, res) => {
+  exec('./bin/ffprobe -version', (err, stdout, stderr) => {
+    if (err) return res.status(500).send('ffprobe not found or not executable');
+    res.send(`ffprobe OK:\n${stdout}`);
+  });
+});
+
+
 // /check-tools endpoint
 app.get('/check-tools', (req, res) => {
   exec('./bin/yt-dlp --version', (err, stdout) => {
